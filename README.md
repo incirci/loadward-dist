@@ -1,35 +1,32 @@
 # RunMeSome Distribution
 
-Private binary distribution repository for RunMeSome.
+Public binary distribution repository for RunMeSome.
 
-This repository intentionally contains no RunMeSome source code. Authorized users receive packaged release binaries through **Releases** only.
+This repository intentionally contains no RunMeSome source code. The source repository remains private; packaged release binaries are published here through **Releases**.
 
 ## Download
 
-You must have access to this private repository and be authenticated with GitHub.
+No GitHub account or repository access is required to download a public release.
 
 ### Browser
 
 Open **Releases**, choose the required version, and download the binary for your Linux architecture.
 
-### GitHub CLI
+### Command line
 
-Authenticate once:
-
-```bash
-gh auth login
-```
-
-Download the latest x86-64 build and checksums:
+Download the latest x86-64 build and checksums without authentication:
 
 ```bash
 mkdir -p /tmp/runmesome-install
 cd /tmp/runmesome-install
 
-gh release download \
-  --repo incirci/runmesome-dist \
-  --pattern runmesome-linux-amd64 \
-  --pattern SHA256SUMS
+curl -fL \
+  -o runmesome-linux-amd64 \
+  https://github.com/incirci/runmesome-dist/releases/latest/download/runmesome-linux-amd64
+
+curl -fL \
+  -o SHA256SUMS \
+  https://github.com/incirci/runmesome-dist/releases/latest/download/SHA256SUMS
 
 grep ' runmesome-linux-amd64$' SHA256SUMS | sha256sum -c -
 chmod +x runmesome-linux-amd64
@@ -37,6 +34,15 @@ install -Dm755 runmesome-linux-amd64 ~/.local/bin/runmesome
 ```
 
 For ARM64, replace `amd64` with `arm64`.
+
+If GitHub CLI is already installed, the equivalent download is:
+
+```bash
+gh release download \
+  --repo incirci/runmesome-dist \
+  --pattern runmesome-linux-amd64 \
+  --pattern SHA256SUMS
+```
 
 ## Releases
 
@@ -51,8 +57,8 @@ Each release contains:
 
 `BUILDINFO.txt` records the release version and exact private-source commit used for the build.
 
-## Access model
+## Repository purpose
 
-This repository must remain private.
+This repository is intentionally public so release binaries can be downloaded without granting access to the private source repository.
 
-For true download-only access, host this repository under a GitHub organization and grant users the **Read** repository role. Private repositories owned by a personal GitHub account cannot grant collaborators read-only access; personal-repository collaborators receive write access.
+Development, source history, CI internals, issues, and unreleased code remain in the private source repository. This repository should stay limited to distribution metadata and release assets.
