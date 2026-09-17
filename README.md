@@ -53,6 +53,23 @@ Follow **[SETUP.md](SETUP.md)** for the complete start-to-finish procedure.
 
 A minimal ready-to-edit daemon configuration is in [`examples/config.toml`](examples/config.toml), and a repository smoke workflow is in [`examples/runmesome-smoke.yml`](examples/runmesome-smoke.yml).
 
+## ChatGPT integration
+
+Once ordinary GitHub Actions execution works, RunMeSome can also accept execution requests from ChatGPT without exposing the daemon to the internet.
+
+ChatGPT uses its own connected GitHub account to create a constrained execution issue in a control repository. The RunMeSome daemon consumes that issue through its separate GitHub App connection and dispatches the canonical execution workflow.
+
+Follow **[CHATGPT.md](CHATGPT.md)** for the complete setup, including:
+
+- connecting GitHub to ChatGPT;
+- configuring the `runmesome` control target;
+- installing [`examples/exec.yml`](examples/exec.yml) in the control repository;
+- the exact issue protocol ChatGPT must use;
+- profile and security boundaries;
+- an end-to-end ChatGPT smoke test.
+
+No ChatGPT token, OpenAI API key, inbound daemon port, or RunMeSome private key is required for this bridge.
+
 ## Releases
 
 Releases are created only by an explicitly triggered release workflow in the private RunMeSome source repository. Ordinary commits and merges do not publish releases.

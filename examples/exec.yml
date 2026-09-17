@@ -1,0 +1,47 @@
+name: Exec
+run-name: Exec · ${{ inputs.profile }} · ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Execution profile
+        required: true
+        type: choice
+        options:
+          - host-local
+          - desktop-local
+          - isolated-local
+          - isolated-local-gpu
+          - workspace-local-ro
+          - workspace-local-rw
+          - isolated-cloud
+          - isolated-cloud-gpu
+      request_id:
+        description: Unique request identifier
+        required: true
+        type: string
+      task_b64:
+        description: Base64-encoded bash task
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  run:
+    runs-on: ${{ fromJSON('{"host-local":"host-local","desktop-local":"desktop-local","isolated-local":"isolated-local","isolated-local-gpu":"isolated-local-gpu","workspace-local-ro":"workspace-local-ro","workspace-local-rw":"workspace-local-rw","isolated-cloud":"isolated-cloud","isolated-cloud-gpu":"isolated-cloud-gpu"}')[inputs.profile] }}
+    timeout-minutes: ${{ fromJSON('{"host-local":20,"desktop-local":45,"isolated-local":30,"isolated-local-gpu":30,"workspace-local-ro":30,"workspace-local-rw":30,"isolated-cloud":60,"isolated-cloud-gpu":60}')[inputs.profile] }}
+
+    steps:
+      - name: Run task
+        shell: bash
+        env:
+          TASK_B64: ${{ inputs.task_b64 }}
+          RUNMESOME_REQUEST_ID: ${{ inputs.request_id }}
+        run: |
+          task="$(mktemp "$RUNNER_TEMP/runmesome-task.XXXXXX")"
+          trap 'rm -f "$task"' EXIT
+          umask 077
+          printf '%s' "$TASK_B64" | base64 --decode > "$task"
+          bash "$task"
