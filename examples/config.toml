@@ -1,10 +1,10 @@
-# Minimal RunMeSome configuration for one GitHub repository.
+# Minimal Loadward configuration for one GitHub repository.
 # Replace every YOUR_* placeholder and the installation ID.
 
 [github]
 app_client_id = "YOUR_GITHUB_APP_CLIENT_ID"
 app_installation_id = 12345678
-private_key_file = "~/.config/runmesome/github-app.pem"
+private_key_file = "~/.config/loadward/github-app.pem"
 max_runners = 1
 
 [providers.local-docker-isolated]

@@ -1,4 +1,4 @@
-name: RunMeSome smoke
+name: Loadward smoke
 
 on:
   workflow_dispatch:
@@ -10,6 +10,6 @@ jobs:
     steps:
       - name: Verify runner
         run: |
-          echo "RunMeSome runner is alive"
+          echo "Loadward runner is alive"
           uname -a
           id

@@ -38,9 +38,9 @@ jobs:
         shell: bash
         env:
           TASK_B64: ${{ inputs.task_b64 }}
-          RUNMESOME_REQUEST_ID: ${{ inputs.request_id }}
+          LOADWARD_REQUEST_ID: ${{ inputs.request_id }}
         run: |
-          task="$(mktemp "$RUNNER_TEMP/runmesome-task.XXXXXX")"
+          task="$(mktemp "$RUNNER_TEMP/loadward-task.XXXXXX")"
           trap 'rm -f "$task"' EXIT
           umask 077
           printf '%s' "$TASK_B64" | base64 --decode > "$task"
