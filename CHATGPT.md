@@ -1,6 +1,8 @@
-# Using Loadward with ChatGPT
+# Using Loadward with ChatGPT through GitHub issue ingress
 
-ChatGPT does not connect directly to the Loadward daemon. The supported path uses GitHub as the control plane:
+This guide covers the GitHub issue-ingress path available to binary-only Loadward deployments. ChatGPT does not connect directly to the daemon in this mode; GitHub acts as the durable control plane.
+
+Source-built deployments also expose a thin `loadward-mcp` adapter that talks to the same Loadward control socket and placement/admission core. That MCP path is separate from this public binary-only guide; both paths preserve the same execution-profile trust boundaries.
 
 ```text
 ChatGPT

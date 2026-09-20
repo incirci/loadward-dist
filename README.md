@@ -8,6 +8,8 @@ This repository intentionally contains no Loadward source code. Packaged release
 
 No GitHub account or source-repository access is required to download a public release.
 
+> **Rename note:** releases published before the RunMeSome → Loadward rename are historical artifacts and keep their original release titles and `runmesome-linux-*` asset names. GitHub does not retroactively rename release assets. The `loadward-linux-*` commands below apply to Loadward-branded releases produced by the current release workflow. If `releases/latest` still points at a historical RunMeSome release, publish or select a post-rename Loadward release before using these asset URLs.
+
 ### Linux x86-64
 
 ```bash
@@ -38,9 +40,27 @@ gh release download \
   --pattern SHA256SUMS
 ```
 
+## Direct execution
+
+GitHub is optional for Loadward's core execution path. A daemon configured only with providers and profiles can explain and run workloads directly:
+
+```bash
+loadward explain
+loadward run -- /bin/sh -c 'echo ok'
+```
+
+Direct execution uses requirement-based placement by default. Specialized boundaries are requested explicitly, for example:
+
+```bash
+loadward explain --desktop-session
+loadward run --gpu --prefer-location cloud -- ./scripts/gpu-proof
+```
+
+An explicit `--profile` is a strict override, not a privilege or capability bypass.
+
 ## First-time GitHub setup
 
-Downloading the binary is only the first step. To let the Loadward daemon serve a GitHub repository, you must also:
+Downloading the binary is only the first step if you want GitHub Actions integration. To let the Loadward daemon serve a GitHub repository, you must also:
 
 1. create a GitHub App;
 2. install that app on the repository;
@@ -55,7 +75,7 @@ A minimal ready-to-edit daemon configuration is in [`examples/config.toml`](exam
 
 ## ChatGPT integration
 
-Once ordinary GitHub Actions execution works, Loadward can also accept execution requests from ChatGPT without exposing the daemon to the internet.
+For binary-only deployments, Loadward can also accept constrained ChatGPT execution requests through its GitHub issue ingress without exposing the daemon to the internet. Source-built deployments additionally expose the `loadward-mcp` adapter; the private source repository documents that MCP path separately.
 
 ChatGPT uses its own connected GitHub account to create a constrained execution issue in a control repository. The Loadward daemon consumes that issue through its separate GitHub App connection and dispatches the canonical execution workflow.
 
@@ -74,7 +94,7 @@ No ChatGPT token, OpenAI API key, inbound daemon port, or Loadward private key i
 
 Releases are created only by an explicitly triggered release workflow in the private Loadward source repository. Ordinary commits and merges do not publish releases.
 
-Each release contains:
+Current Loadward-branded releases contain:
 
 - `loadward-linux-amd64`
 - `loadward-linux-arm64`

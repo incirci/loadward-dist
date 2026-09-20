@@ -30,7 +30,7 @@ permissions: {}
 
 jobs:
   run:
-    runs-on: ${{ fromJSON('{"host-local":["host-local"],"desktop-local":["desktop-local","desktop-session"],"isolated-local":["isolated-local"],"isolated-local-gpu":["isolated-local-gpu"],"workspace-local-ro":["workspace-local-ro"],"workspace-local-rw":["workspace-local-rw"],"isolated-cloud":["isolated-cloud"],"isolated-cloud-gpu":["isolated-cloud-gpu"]}')[inputs.profile] }}
+    runs-on: ${{ fromJSON('{"host-local":["host-local"],"desktop-local":["desktop-local"],"isolated-local":["isolated-local"],"isolated-local-gpu":["isolated-local-gpu"],"workspace-local-ro":["workspace-local-ro"],"workspace-local-rw":["workspace-local-rw"],"isolated-cloud":["isolated-cloud"],"isolated-cloud-gpu":["isolated-cloud-gpu"]}')[inputs.profile] }}
     timeout-minutes: ${{ fromJSON('{"host-local":20,"desktop-local":45,"isolated-local":30,"isolated-local-gpu":30,"workspace-local-ro":30,"workspace-local-rw":30,"isolated-cloud":60,"isolated-cloud-gpu":60}')[inputs.profile] }}
 
     steps:

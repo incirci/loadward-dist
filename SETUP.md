@@ -1,6 +1,6 @@
 # First-time setup
 
-This guide gets one GitHub repository running on Loadward using the simplest supported execution path:
+This guide gets one GitHub repository running on Loadward using the simplest supported GitHub Actions execution path. Loadward itself is not GitHub-only: for direct CLI execution, GitHub credentials and `[[targets]]` are optional.
 
 ```text
 GitHub Actions workflow
@@ -19,6 +19,29 @@ Docker container
 ```
 
 The GitHub App credentials stay on the machine running the daemon. They are **not** committed to the repository and are **not** added as repository Actions secrets.
+
+### Direct-only alternative
+
+If you only need direct CLI execution, skip the GitHub App and target sections. A minimal configuration is:
+
+```toml
+[providers.local-docker-isolated]
+type = "docker"
+image = "ghcr.io/actions/actions-runner:latest"
+
+[profiles.isolated-local]
+provider = "local-docker-isolated"
+capacity = 1
+```
+
+Start the daemon normally, then use requirement-based placement:
+
+```bash
+loadward explain
+loadward run -- /bin/sh -c 'echo ok'
+```
+
+Use `--profile` only when you intentionally want one exact configured profile; it does not weaken declared requirements.
 
 ## 1. Prerequisites
 
