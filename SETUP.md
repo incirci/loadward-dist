@@ -1,147 +1,55 @@
-# First-time setup
+# Loadward setup
 
-This guide gets one GitHub repository running on Loadward using the simplest supported GitHub Actions execution path. Loadward itself is not GitHub-only: for direct CLI execution, GitHub credentials and `[[targets]]` are optional.
+This guide gets GitHub Actions running on Loadward using the current route-based contract.
 
-```text
-GitHub Actions workflow
-        |
-        v
-GitHub App installation
-        |
-        v
-Loadward daemon
-        |
-        v
-isolated-local profile
-        |
-        v
-Docker container
-```
+Loadward itself is not GitHub-only. Direct CLI execution needs only providers and profiles; the GitHub section is optional.
 
-The GitHub App credentials stay on the machine running the daemon. They are **not** committed to the repository and are **not** added as repository Actions secrets.
+## 1. Install Loadward
 
-### Direct-only alternative
-
-If you only need direct CLI execution, skip the GitHub App and target sections. A minimal configuration is:
-
-```toml
-[providers.local-docker-isolated]
-type = "docker"
-image = "ghcr.io/actions/actions-runner:latest"
-
-[profiles.isolated-local]
-provider = "local-docker-isolated"
-capacity = 1
-```
-
-Start the daemon normally, then use requirement-based placement:
+Follow the download instructions in [`README.md`](README.md), then verify:
 
 ```bash
-loadward explain
-loadward run -- /bin/sh -c 'echo ok'
-```
-
-Use `--profile` only when you intentionally want one exact configured profile; it does not weaken declared requirements.
-
-## 1. Prerequisites
-
-On the Linux machine that will run the daemon, install and verify Docker:
-
-```bash
-docker version
-docker run --rm hello-world
-```
-
-Install the Loadward binary from this repository's Releases page as described in [README.md](README.md), then verify it is on your path:
-
-```bash
+loadward version
 loadward --help
 ```
 
-## 2. Create a GitHub App
+## 2. Install prerequisites
 
-Create a separate GitHub App for the Loadward installation that you control.
-
-In GitHub:
-
-1. Open **Settings → Developer settings → GitHub Apps**.
-2. Select **New GitHub App**.
-3. Give it a unique name, for example `loadward-<your-login>`.
-4. Set **Homepage URL** to `https://github.com/incirci/loadward-dist` or another URL you control.
-5. Leave user authorization/callback settings unused.
-6. Under **Webhooks**, turn **Active** off. Loadward does not require GitHub App webhooks.
-7. Under **Repository permissions**, set exactly:
-   - **Actions: Read and write**
-   - **Administration: Read and write**
-   - **Issues: Read and write**
-8. Leave other repository, organization, and account permissions at their defaults.
-9. Under **Where can this GitHub App be installed?**, choose **Only on this account** unless you specifically need to install the same app on another account or organization.
-10. Create the app.
-
-Why these permissions:
-
-- **Administration** is required to manage repository-scoped self-hosted runner scale sets.
-- **Actions** is required for GitHub Actions integration and Loadward's GitHub execution ingress.
-- **Issues** is used by Loadward's owner-request issue ingress.
-
-GitHub recommends granting a GitHub App only the permissions it needs.
-
-## 3. Record the Client ID and generate a private key
-
-On the new GitHub App's settings page, copy its **Client ID**. Loadward expects the Client ID, not the numeric App ID.
-
-Then scroll to **Private keys** and select **Generate a private key**. GitHub downloads a `.pem` file.
-
-Move that key to the daemon host configuration directory:
+For the minimal local-container setup:
 
 ```bash
-mkdir -p ~/.config/loadward
-chmod 700 ~/.config/loadward
-mv ~/Downloads/*.pem ~/.config/loadward/github-app.pem
-chmod 600 ~/.config/loadward/github-app.pem
+docker version
 ```
 
-If there is more than one `.pem` file in `~/Downloads`, move the correct GitHub App key explicitly rather than using the wildcard.
+The Linux user running Loadward must be able to use Docker.
 
-Never commit this key.
+## 3. Create and install a GitHub App
 
-## 4. Install the GitHub App on the repository
+Create a GitHub App owned by the account or organization that owns the repositories Loadward should serve.
 
-From the GitHub App settings page:
-
-1. Select **Install App**.
-2. Choose the user or organization that owns the repository.
-3. Prefer **Only select repositories**.
-4. Select the repository Loadward should serve.
-5. Complete the installation.
-
-Then open **Configure** for that installed app. The browser URL contains `/installations/<number>`. That number is the **installation ID** Loadward needs.
-
-For example, if the URL ends in:
+Use these repository permissions:
 
 ```text
-/installations/12345678
+Actions:        Read and write
+Administration: Read and write
+Issues:         Read and write
 ```
 
-then:
+Store the generated private key outside any repository, for example:
 
 ```text
-app_installation_id = 12345678
+~/.config/loadward/github-app.pem
 ```
 
-All repositories configured as targets for this daemon must be accessible through the configured GitHub App installation.
+Install the App on the repositories Loadward should serve. The **GitHub App installation is the repository authorization boundary**: Loadward discovers those repositories automatically. There is no repository list or per-repository profile allowlist in `config.toml`.
 
-If you later change the GitHub App's requested permissions, GitHub may require the installation owner to approve the updated permissions before new installation tokens receive them.
+Record the App client ID, installation ID, and private-key path. If installation scope or App permissions change, approve the updated installation access and restart Loadward.
 
-## 5. Create the Loadward configuration
+## 4. Create the configuration
 
-Create:
+Create `~/.config/loadward/config.toml`.
 
-```text
-~/.config/loadward/config.toml
-```
-
-Start with the minimal Docker configuration below, replacing the four uppercase placeholders:
+A minimal local-container configuration is:
 
 ```toml
 [github]
@@ -157,34 +65,34 @@ image = "ghcr.io/actions/actions-runner:latest"
 [profiles.isolated-local]
 provider = "local-docker-isolated"
 capacity = 1
+priority = 10
 
-[[targets]]
-name = "YOUR_REPOSITORY_NAME"
-url = "https://github.com/YOUR_OWNER/YOUR_REPOSITORY_NAME"
-profiles = ["isolated-local"]
+[github.routes.local-isolated]
+isolation = "container"
+workspace = "none"
+location = "local"
 ```
 
-You can also copy [`examples/config.toml`](examples/config.toml).
+You can copy [`examples/config.toml`](examples/config.toml).
 
-Use the repository basename for `name`. For example:
+The identity layers are intentionally different:
 
-```toml
-[[targets]]
-name = "my-project"
-url = "https://github.com/alice/my-project"
-profiles = ["isolated-local"]
+```text
+GitHub workflow -> route -> placement -> internal profile -> provider
 ```
 
-The target is an explicit allowlist. A repository can request only the profiles listed for that target.
+- `local-isolated` is a stable GitHub-visible route.
+- `isolated-local` is an internal profile identity.
+- `local-docker-isolated` is a provider identity.
 
-`max_runners` is the GitHub adapter ceiling. `capacity` is the shared Loadward capacity for that execution profile. They are separate limits.
+Workflows never select the internal profile or provider.
 
-## 6. Validate the configuration
+`github.max_runners` is an adapter-side ceiling. Profile `capacity` is the shared physical admission limit used by GitHub, direct CLI, MCP/local agents, and other consumers.
 
-Before starting the daemon:
+## 5. Validate the configuration
 
 ```bash
-loadward -check
+loadward --check
 ```
 
 Expected:
@@ -193,11 +101,9 @@ Expected:
 configuration valid
 ```
 
-If validation fails, fix the configuration before continuing. Loadward intentionally rejects unknown or obsolete configuration fields rather than silently accepting aliases or fallback behavior.
+Current configuration is forward-only. Legacy repository-target mappings are rejected rather than silently accepted.
 
-## 7. Run the daemon as a user service
-
-Create the systemd user service:
+## 6. Run the daemon as a user service
 
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -227,32 +133,22 @@ Follow logs with:
 journalctl --user -u loadward.service -f
 ```
 
-## 8. Verify the daemon can see the repository
+## 7. Verify repository discovery
 
-Run:
+For an installed repository named `my-project`:
 
 ```bash
-loadward doctor --target YOUR_REPOSITORY_NAME
+loadward status --target my-project
+loadward doctor --target my-project
 ```
 
-A healthy idle route should report the listener and provider as healthy/ready. Demand-scaled GitHub runners may correctly show zero active runners while no workflow is waiting.
+A healthy idle route can legitimately have zero provider/GitHub runners because capacity is demand-scaled.
 
-If the target is absent, check:
+If the repository is absent, check the GitHub App installation scope, installation ID, permission approval, and whether Loadward was restarted after scope changed.
 
-- the repository URL in `config.toml`;
-- that the GitHub App is installed on that repository;
-- that the configured installation ID belongs to that installation;
-- that the daemon was restarted after changing the configuration.
+## 8. Add a smoke workflow
 
-## 9. Add a workflow to the repository
-
-In the repository that should use Loadward, add:
-
-```text
-.github/workflows/loadward-smoke.yml
-```
-
-with:
+Add `.github/workflows/loadward-smoke.yml`:
 
 ```yaml
 name: Loadward smoke
@@ -262,7 +158,7 @@ on:
 
 jobs:
   smoke:
-    runs-on: isolated-local
+    runs-on: local-isolated
     timeout-minutes: 5
     steps:
       - name: Verify runner
@@ -274,91 +170,60 @@ jobs:
 
 A copy is available at [`examples/loadward-smoke.yml`](examples/loadward-smoke.yml).
 
-The important line is:
+The `runs-on` value is the configured **route**. Do not use `isolated-local`, provider names, `self-hosted`, OS labels, or compatibility labels.
 
-```yaml
-runs-on: isolated-local
-```
+## 9. Run the smoke test
 
-The value must exactly match a profile exposed by that repository's `[[targets]]` entry. Do not add `self-hosted` or another label unless a future Loadward contract explicitly requires it.
-
-No Loadward GitHub App private key or installation token belongs in this workflow.
-
-## 10. Run the smoke test
-
-In GitHub:
-
-1. Open the repository's **Actions** tab.
-2. Open **Loadward smoke**.
-3. Select **Run workflow**.
-
-While the job is running, you can inspect the daemon with:
-
-```bash
-loadward doctor --target YOUR_REPOSITORY_NAME
-journalctl --user -u loadward.service -f
-```
+Run **Loadward smoke** from the repository's Actions tab.
 
 The expected lifecycle is:
 
 ```text
 workflow queued
-    -> Loadward detects demand
-    -> execution resource is created
-    -> ephemeral GitHub runner accepts the job
+    -> Loadward observes route demand
+    -> planner selects a compatible profile
+    -> profile capacity is admitted
+    -> execution resource + ephemeral runner are created
     -> job runs
-    -> runner/resource is cleaned up
+    -> runner/resource are cleaned up
     -> route returns to idle
 ```
 
-After the job completes, `doctor` can legitimately return to zero provider/GitHub runners because the execution path is demand-scaled.
+Inspect with:
+
+```bash
+loadward doctor --target my-project --route local-isolated
+journalctl --user -u loadward.service -f
+```
 
 ## Adding another repository
 
-For another repository under the same GitHub App installation:
+Add the repository to the same GitHub App installation and restart Loadward. No TOML repository entry is required.
 
-1. Open the installed GitHub App's **Configure** page and add the repository to its repository access.
-2. Add another target to `~/.config/loadward/config.toml`:
-
-```toml
-[[targets]]
-name = "another-repo"
-url = "https://github.com/YOUR_OWNER/another-repo"
-profiles = ["isolated-local"]
-```
-
-3. Validate and restart:
-
-```bash
-loadward -check
-systemctl --user restart loadward.service
-loadward doctor --target another-repo
-```
-
-The same daemon can serve multiple repositories through the same GitHub App installation.
+Every configured GitHub route is available to every repository in that App installation. Use a separate App installation if you need a different repository trust boundary.
 
 ## Common failures
 
 | Symptom | Check first |
 | --- | --- |
-| `401` / authentication failure | Client ID, installation ID, and matching private key |
-| `403` from GitHub | GitHub App permissions and whether updated permissions were approved |
-| target missing from `doctor` | `[[targets]]` name/URL and daemon restart |
+| `401` / authentication failure | Client ID, installation ID, matching private key |
+| `403` from GitHub | App permissions and approval of updated permissions |
+| repository missing from `status` / `doctor` | App installation scope and daemon restart |
 | listener unhealthy | daemon logs and GitHub App installation access |
-| workflow remains queued | exact `runs-on` profile, daemon health, target profile allowlist |
-| Docker execution fails | `docker version`, daemon access, and pulling `ghcr.io/actions/actions-runner:latest` |
+| workflow remains queued | exact `runs-on` route and compatible profile/provider health |
+| Docker execution fails | `docker version`, daemon access, image pull |
 
 Useful commands:
 
 ```bash
-loadward -check
-loadward status --target YOUR_REPOSITORY_NAME
-loadward doctor --target YOUR_REPOSITORY_NAME
+loadward --check
+loadward status
+loadward doctor --target my-project
 journalctl --user -u loadward.service --no-pager -n 200
 ```
 
 ## Security boundary
 
-The minimal setup above uses `isolated-local`, which runs the GitHub job in a disposable Docker execution environment rather than directly as the daemon host user.
+The minimal `local-isolated` route maps to a disposable local Docker environment. Stronger routes such as host, writable workspace, desktop, or GPU execution should be configured only when intentionally required.
 
-Only enable broader execution profiles for repositories you trust and only when you intentionally need that stronger access boundary.
+GitHub App installation membership is the repository trust boundary. There is intentionally no per-repository route authorization layer inside Loadward.

@@ -1,22 +1,13 @@
 name: Exec
-run-name: Exec · ${{ inputs.profile }} · ${{ inputs.request_id }}
+run-name: Exec · ${{ inputs.route }} · ${{ inputs.request_id }}
 
 on:
   workflow_dispatch:
     inputs:
-      profile:
-        description: Execution profile
+      route:
+        description: Loadward execution route
         required: true
-        type: choice
-        options:
-          - host-local
-          - desktop-local
-          - isolated-local
-          - isolated-local-gpu
-          - workspace-local-ro
-          - workspace-local-rw
-          - isolated-cloud
-          - isolated-cloud-gpu
+        type: string
       request_id:
         description: Unique request identifier
         required: true
@@ -30,8 +21,8 @@ permissions: {}
 
 jobs:
   run:
-    runs-on: ${{ fromJSON('{"host-local":["host-local"],"desktop-local":["desktop-local"],"isolated-local":["isolated-local"],"isolated-local-gpu":["isolated-local-gpu"],"workspace-local-ro":["workspace-local-ro"],"workspace-local-rw":["workspace-local-rw"],"isolated-cloud":["isolated-cloud"],"isolated-cloud-gpu":["isolated-cloud-gpu"]}')[inputs.profile] }}
-    timeout-minutes: ${{ fromJSON('{"host-local":20,"desktop-local":45,"isolated-local":30,"isolated-local-gpu":30,"workspace-local-ro":30,"workspace-local-rw":30,"isolated-cloud":60,"isolated-cloud-gpu":60}')[inputs.profile] }}
+    runs-on: ${{ inputs.route }}
+    timeout-minutes: 60
 
     steps:
       - name: Run task

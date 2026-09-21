@@ -5,7 +5,7 @@ on:
 
 jobs:
   smoke:
-    runs-on: isolated-local
+    runs-on: local-isolated
     timeout-minutes: 5
     steps:
       - name: Verify runner

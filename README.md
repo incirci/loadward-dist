@@ -63,11 +63,11 @@ An explicit `--profile` is a strict override, not a privilege or capability bypa
 Downloading the binary is only the first step if you want GitHub Actions integration. To let the Loadward daemon serve a GitHub repository, you must also:
 
 1. create a GitHub App;
-2. install that app on the repository;
+2. install that app on the repositories Loadward should serve;
 3. store the app private key on the daemon host;
-4. configure the GitHub installation and repository target in Loadward;
+4. configure the GitHub installation, providers/profiles, and GitHub routes;
 5. run the daemon;
-6. use a Loadward execution profile in the repository workflow.
+6. use a Loadward route as the workflow's single `runs-on` label.
 
 Follow **[SETUP.md](SETUP.md)** for the complete start-to-finish procedure.
 
@@ -82,10 +82,10 @@ ChatGPT uses its own connected GitHub account to create a constrained execution 
 Follow **[CHATGPT.md](CHATGPT.md)** for the complete setup, including:
 
 - connecting GitHub to ChatGPT;
-- configuring the `loadward` control target;
+- using the installed `loadward` repository as the control repository;
 - installing [`examples/exec.yml`](examples/exec.yml) in the control repository;
 - the exact issue protocol ChatGPT must use;
-- profile and security boundaries;
+- route and security boundaries;
 - an end-to-end ChatGPT smoke test.
 
 No ChatGPT token, OpenAI API key, inbound daemon port, or Loadward private key is required for this bridge.

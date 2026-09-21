@@ -1,5 +1,9 @@
-# Minimal Loadward configuration for one GitHub repository.
-# Replace every YOUR_* placeholder and the installation ID.
+# Minimal Loadward configuration for GitHub Actions.
+# Replace the GitHub App placeholders and installation ID.
+#
+# The GitHub App installation is the repository authorization boundary.
+# Loadward discovers every repository in that installation automatically.
+# Every configured route is available to every installed repository.
 
 [github]
 app_client_id = "YOUR_GITHUB_APP_CLIENT_ID"
@@ -14,8 +18,10 @@ image = "ghcr.io/actions/actions-runner:latest"
 [profiles.isolated-local]
 provider = "local-docker-isolated"
 capacity = 1
+priority = 10
 
-[[targets]]
-name = "YOUR_REPOSITORY_NAME"
-url = "https://github.com/YOUR_OWNER/YOUR_REPOSITORY_NAME"
-profiles = ["isolated-local"]
+# GitHub workflows select routes, never internal profile/provider names.
+[github.routes.local-isolated]
+isolation = "container"
+workspace = "none"
+location = "local"
