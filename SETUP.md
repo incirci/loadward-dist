@@ -89,7 +89,251 @@ Workflows never select the internal profile or provider.
 
 `github.max_runners` is an adapter-side ceiling. Profile `capacity` is the shared physical admission limit used by GitHub, direct CLI, MCP/local agents, and other consumers.
 
-## 5. Validate the configuration
+## 5. Supported providers and profiles
+
+Loadward currently supports four provider families. Docker has several contract variants, so the common installed profile set looks like this:
+
+| Profile | Provider type | Environment | Typical route |
+| --- | --- | --- | --- |
+| `isolated-local` | `docker` | isolated local CPU container | `isolated` / `local-isolated` |
+| `isolated-local-gpu` | `docker` | isolated local GPU container | `gpu` / `local-gpu` |
+| `workspace-local-ro` | `docker` | container with read-only host workspace | `workspace-ro` |
+| `workspace-local-rw` | `docker` | container with read/write host workspace | `workspace-rw` |
+| `host-local` | `host` | direct execution as the Loadward user | `host` |
+| `desktop-local` | `libvirt` | disposable Linux desktop VM | `desktop` |
+| `isolated-cloud` | `runpod-serverless` | RunPod CPU worker | `isolated` / `cloud-isolated` |
+| `isolated-cloud-gpu` | `runpod-serverless` | RunPod GPU worker | `gpu` / `cloud-gpu` |
+
+Provider and profile names are operator identities. Placement semantics come from the validated provider configuration, and GitHub workflows select **routes**, not profiles.
+
+### Local Docker
+
+Prerequisite: a working Docker daemon accessible to the Linux user running Loadward.
+
+```toml
+[providers.local-docker-isolated]
+type = "docker"
+image = "ghcr.io/actions/actions-runner:latest"
+
+[profiles.isolated-local]
+provider = "local-docker-isolated"
+capacity = 4
+priority = 10
+```
+
+A portable route may prefer local Docker and spill to compatible cloud CPU capacity before execution starts:
+
+```toml
+[github.routes.isolated]
+isolation = "container"
+workspace = "none"
+prefer_locations = ["local", "cloud"]
+```
+
+### Local Docker with GPU
+
+Prerequisites: Docker plus a working NVIDIA driver/runtime. Verify the host first with `nvidia-smi`.
+
+```toml
+[providers.local-docker-isolated-gpu]
+type = "docker"
+image = "YOUR_GPU_RUNNER_IMAGE"
+gpus = "all"
+
+[profiles.isolated-local-gpu]
+provider = "local-docker-isolated-gpu"
+capacity = 1
+priority = 20
+
+[github.routes.local-gpu]
+isolation = "container"
+workspace = "none"
+features = ["gpu"]
+location = "local"
+```
+
+GPU is a specialized opt-in feature. Plain isolated requests do not consume GPU profiles.
+
+### Docker with controlled host workspace
+
+Use distinct providers for read-only and read/write access. The configured directory is mounted inside the execution environment at `/workspace`.
+
+```toml
+[providers.local-docker-workspace-ro]
+type = "docker"
+image = "ghcr.io/actions/actions-runner:latest"
+workspace = "~/Code"
+workspace_access = "read-only"
+
+[providers.local-docker-workspace-rw]
+type = "docker"
+image = "ghcr.io/actions/actions-runner:latest"
+workspace = "~/Code"
+workspace_access = "read-write"
+
+[profiles.workspace-local-ro]
+provider = "local-docker-workspace-ro"
+capacity = 4
+
+[profiles.workspace-local-rw]
+provider = "local-docker-workspace-rw"
+capacity = 4
+
+[github.routes.workspace-ro]
+isolation = "container"
+workspace = "read-only"
+
+[github.routes.workspace-rw]
+isolation = "container"
+workspace = "read-write"
+```
+
+Workspace access is a hard contract. A plain `workspace = "none"` request cannot silently receive a workspace mount.
+
+### Direct host execution
+
+The host provider runs workloads directly as the same Linux user that runs Loadward. This is the strongest local execution boundary and should be enabled only for trusted workloads.
+
+```toml
+[providers.local-host-user]
+type = "host"
+
+[profiles.host-local]
+provider = "local-host-user"
+capacity = 1
+
+[github.routes.host]
+isolation = "host"
+workspace = "host"
+```
+
+If GitHub Actions uses the `host` route, `[github].runner_dir` must point to an unregistered official GitHub Actions runner installation used as the immutable runner template:
+
+```toml
+[github]
+runner_dir = "~/.local/share/loadward/actions-runner"
+```
+
+Host isolation and host workspace are never selected implicitly.
+
+### Libvirt desktop VM
+
+Prerequisites include KVM/QEMU, libvirt user-session access, `systemd-run`, and either `virtqemud` or `libvirtd`.
+
+```bash
+command -v systemd-run
+command -v virtqemud || command -v libvirtd
+```
+
+The provider also needs a prepared compatible desktop QCOW2 base image.
+
+```toml
+[providers.local-libvirt-desktop]
+type = "libvirt"
+base_image = "~/.local/share/loadward/images/ubuntu-24.04-desktop.qcow2"
+libvirt_uri = "qemu:///session"
+state_dir = "~/.local/state/loadward/desktop-vm"
+memory_mb = 8192
+vcpus = 4
+video_heads = 2
+
+[profiles.desktop-local]
+provider = "local-libvirt-desktop"
+capacity = 4
+
+[github.routes.desktop]
+isolation = "vm"
+workspace = "none"
+features = ["desktop-session"]
+```
+
+`desktop-session` is a specialized opt-in feature. An ordinary isolated request does not consume desktop VM capacity.
+
+The public binary distribution does not currently include a ready-made desktop base image; provide a compatible image separately.
+
+### RunPod Serverless CPU
+
+Prerequisites: a RunPod account, an API key, and a compatible RunPod Serverless worker image/template.
+
+Store the API key outside the repository:
+
+```bash
+mkdir -p ~/.config/loadward
+printf '%s\n' '<RUNPOD_API_KEY>' > ~/.config/loadward/runpod-api-key
+chmod 600 ~/.config/loadward/runpod-api-key
+```
+
+CPU provider:
+
+```toml
+[providers.runpod]
+type = "runpod-serverless"
+compute = "cpu"
+
+[profiles.isolated-cloud]
+provider = "runpod"
+capacity = 4
+
+[github.routes.cloud-isolated]
+isolation = "container"
+workspace = "none"
+location = "cloud"
+```
+
+### RunPod Serverless GPU
+
+GPU provider:
+
+```toml
+[providers.runpod-gpu]
+type = "runpod-serverless"
+compute = "gpu"
+gpu_type = "NVIDIA A40"
+
+[profiles.isolated-cloud-gpu]
+provider = "runpod-gpu"
+capacity = 1
+
+[github.routes.cloud-gpu]
+isolation = "container"
+workspace = "none"
+features = ["gpu"]
+location = "cloud"
+```
+
+Optional RunPod provider overrides are:
+
+```toml
+max_workers = 1
+api_key_file = "~/.config/loadward/runpod-api-key"
+execution_timeout_seconds = 3600
+job_ttl_seconds = 7200
+```
+
+Loadward manages deterministic RunPod endpoint identities, but a fresh installation still needs compatible Serverless worker infrastructure as its bootstrap source. The public binary repository does not currently ship the RunPod worker image itself.
+
+### Portable versus provider-specific routes
+
+Use portable routes when the workload only cares about capabilities:
+
+```toml
+[github.routes.isolated]
+isolation = "container"
+workspace = "none"
+prefer_locations = ["local", "cloud"]
+
+[github.routes.gpu]
+isolation = "container"
+workspace = "none"
+features = ["gpu"]
+prefer_locations = ["local", "cloud"]
+```
+
+Use `location = "local"` or `location = "cloud"` when you intentionally need one provider family for validation or policy.
+
+Only configure providers you actually intend to use. You can mix provider families in one Loadward installation; they all share the same placement and admission core.
+
+## 6. Validate the configuration
 
 ```bash
 loadward --check
@@ -103,7 +347,7 @@ configuration valid
 
 Current configuration is forward-only. Legacy repository-target mappings are rejected rather than silently accepted.
 
-## 6. Run the daemon as a user service
+## 7. Run the daemon as a user service
 
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -133,7 +377,7 @@ Follow logs with:
 journalctl --user -u loadward.service -f
 ```
 
-## 7. Verify repository discovery
+## 8. Verify repository discovery
 
 For an installed repository named `my-project`:
 
@@ -146,7 +390,7 @@ A healthy idle route can legitimately have zero provider/GitHub runners because 
 
 If the repository is absent, check the GitHub App installation scope, installation ID, permission approval, and whether Loadward was restarted after scope changed.
 
-## 8. Add a smoke workflow
+## 9. Add a smoke workflow
 
 Add `.github/workflows/loadward-smoke.yml`:
 
@@ -172,7 +416,7 @@ A copy is available at [`examples/loadward-smoke.yml`](examples/loadward-smoke.y
 
 The `runs-on` value is the configured **route**. Do not use `isolated-local`, provider names, `self-hosted`, OS labels, or compatibility labels.
 
-## 9. Run the smoke test
+## 10. Run the smoke test
 
 Run **Loadward smoke** from the repository's Actions tab.
 
