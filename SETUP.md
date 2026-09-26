@@ -73,6 +73,8 @@ A minimal local-container GitHub configuration is:
 app_client_id = "YOUR_GITHUB_APP_CLIENT_ID"
 app_installation_id = 12345678
 private_key_file = "~/.config/loadward/github-app.pem"
+# Optional: enable daemon-native issue ingress on one exact installed repository.
+# exec_issue_repository = "OWNER/REPOSITORY"
 max_runners = 1
 
 [pools.isolated-local]
@@ -87,6 +89,8 @@ location = "local"
 ```
 
 You can copy [`examples/config.toml`](examples/config.toml).
+
+`github.exec_issue_repository` is the explicit opt-in for ChatGPT/ad-hoc issue ingress. It must be one exact installed `owner/repository` identity. Omit it to keep issue ingress disabled; Loadward never infers a control repository from its basename.
 
 The ownership layers are intentionally different:
 

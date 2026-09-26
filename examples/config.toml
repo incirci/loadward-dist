@@ -8,6 +8,8 @@
 app_client_id = "YOUR_GITHUB_APP_CLIENT_ID"
 app_installation_id = 12345678
 private_key_file = "~/.config/loadward/github-app.pem"
+# Optional daemon-native issue ingress. Use one exact installed repository.
+# exec_issue_repository = "OWNER/REPOSITORY"
 max_runners = 1
 
 # Execution pools are the configured capacity/backend objects.

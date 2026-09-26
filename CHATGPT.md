@@ -34,11 +34,18 @@ loadward status --summary
 loadward doctor --target loadward
 ```
 
-## 2. Use the `loadward` repository as the control repository
+## 2. Configure the control repository explicitly
 
-The daemon-native issue ingress uses the installed repository whose basename is `loadward` as the control repository.
+Daemon-native issue ingress is opt-in. Configure the exact installed repository that will accept execution issues:
 
-The GitHub App installation must include that repository. The issue ingress accepts requests only when the issue author is the owner of the control repository.
+```toml
+[github]
+exec_issue_repository = "incirci/loadward"
+```
+
+The value must be the full `owner/repository` identity and the repository must belong to the GitHub App installation. When this field is absent, issue ingress is disabled; Loadward does not guess a control repository from a basename such as `loadward`.
+
+The issue ingress accepts requests only when the issue author is the owner of the configured control repository.
 
 ## 3. GitHub App permissions
 

@@ -118,7 +118,7 @@ A minimal current configuration is in [`examples/config.toml`](examples/config.t
 
 For binary-only deployments, Loadward can accept constrained ChatGPT execution requests through GitHub issue ingress without exposing the daemon to the internet.
 
-ChatGPT uses its connected GitHub account to create a constrained execution issue in a control repository. The Loadward daemon consumes that issue through its separate GitHub App connection and dispatches the canonical execution workflow. The requested route is resolved through the same authorization, placement, admission, pool, and backend machinery as any other GitHub workload.
+ChatGPT uses its connected GitHub account to create a constrained execution issue in an explicitly configured control repository. Set `github.exec_issue_repository = "OWNER/REPOSITORY"` to enable that ingress; when it is absent, issue ingress is disabled. The Loadward daemon consumes the issue through its separate GitHub App connection and dispatches the canonical execution workflow. The requested route is resolved through the same authorization, placement, admission, pool, and backend machinery as any other GitHub workload.
 
 Follow **[CHATGPT.md](CHATGPT.md)** for the complete setup.
 
