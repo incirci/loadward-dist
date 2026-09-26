@@ -1,9 +1,8 @@
-# Minimal Loadward configuration for GitHub Actions.
+# Minimal current Loadward configuration for GitHub Actions.
 # Replace the GitHub App placeholders and installation ID.
 #
-# The GitHub App installation is the repository authorization boundary.
-# Loadward discovers every repository in that installation automatically.
-# Every configured route is available to every installed repository.
+# The GitHub App installation defines the trusted repository set.
+# Loadward discovers installed repositories automatically.
 
 [github]
 app_client_id = "YOUR_GITHUB_APP_CLIENT_ID"
@@ -11,17 +10,24 @@ app_installation_id = 12345678
 private_key_file = "~/.config/loadward/github-app.pem"
 max_runners = 1
 
-[providers.local-docker-isolated]
-type = "docker"
+# Execution pools are the configured capacity/backend objects.
+[pools.isolated-local]
+backend = "docker"
+capacity = 1
 image = "ghcr.io/actions/actions-runner:latest"
 
-[profiles.isolated-local]
-provider = "local-docker-isolated"
-capacity = 1
-priority = 10
-
-# GitHub workflows select routes, never internal profile/provider names.
+# GitHub workflows select routes, never pool/backend identities.
 [github.routes.local-isolated]
 isolation = "container"
 workspace = "none"
 location = "local"
+
+# Privileged capability policy can be added explicitly, for example:
+#
+# [authorization.github]
+# host = "deny"
+# workspace-read = "allow"
+# workspace-write = "deny"
+# cloud = "allow"
+# gpu = "allow"
+# desktop-session = "allow"
