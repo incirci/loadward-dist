@@ -75,7 +75,7 @@ Pool names are operational identities, not placement privileges. There is no con
 
 ## Operational CLI
 
-The built-in help is the source of truth for the installed binary:
+The built-in help is the source of truth for the installed binary. The public command reference is [CLI.md](CLI.md).
 
 ```bash
 loadward --help
