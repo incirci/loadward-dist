@@ -4,11 +4,13 @@ Public binary distribution repository for Loadward.
 
 This repository intentionally contains no Loadward source code. Packaged release binaries are published here through **Releases**.
 
+Loadward is an execution-resource manager. Callers describe the environment they need; Loadward matches that request against configured execution **pools**, admits shared capacity, starts the pool's **backend**, observes the execution, and cleans it up. GitHub Actions is one adapter to that core rather than the core abstraction itself.
+
 ## Download
 
 No GitHub account or source-repository access is required to download a public release.
 
-> **Rename note:** releases published before the RunMeSome → Loadward rename are historical artifacts and keep their original release titles and `runmesome-linux-*` asset names. GitHub does not retroactively rename release assets. The `loadward-linux-*` commands below apply to Loadward-branded releases produced by the current release workflow. If `releases/latest` still points at a historical RunMeSome release, publish or select a post-rename Loadward release before using these asset URLs.
+> **Rename note:** releases published before the RunMeSome → Loadward rename are historical artifacts and keep their original release titles and `runmesome-linux-*` asset names. GitHub does not retroactively rename release assets. The `loadward-linux-*` commands below apply to Loadward-branded releases produced by the current release workflow.
 
 ### Linux x86-64
 
@@ -40,53 +42,85 @@ gh release download \
   --pattern SHA256SUMS
 ```
 
+Verify the installed binary and discover the current CLI:
+
+```bash
+loadward version
+loadward --help
+loadward help run
+```
+
 ## Direct execution
 
-GitHub is optional for Loadward's core execution path. A daemon configured only with providers and profiles can explain and run workloads directly:
+GitHub is optional. A direct-run-only daemon needs only execution pools:
+
+```toml
+[pools.default]
+backend = "docker"
+capacity = 1
+image = "ubuntu:24.04"
+```
+
+Placement is requirement-based:
 
 ```bash
 loadward explain
 loadward run -- /bin/sh -c 'echo ok'
-```
 
-Direct execution uses requirement-based placement by default. Specialized boundaries are requested explicitly, for example:
-
-```bash
 loadward explain --desktop-session
 loadward run --gpu --prefer-location cloud -- ./scripts/gpu-proof
 ```
 
-An explicit `--profile` is a strict override, not a privilege or capability bypass.
+Pool names are operational identities, not placement privileges. There is no configured provider/profile layer and no `--profile` placement override.
+
+## Operational CLI
+
+The built-in help is the source of truth for the installed binary:
+
+```bash
+loadward --help
+loadward help status
+loadward help doctor
+loadward help authorization
+loadward help recovery
+```
+
+Useful read-only commands:
+
+```bash
+# fleet-wide status
+loadward status
+loadward status --summary
+
+# doctor deliberately requires explicit scope
+loadward doctor --target my-project
+loadward doctor --all
+```
+
+`status` is fleet-wide when no selector is supplied. `doctor` is intentionally different: it requires `--target` and/or `--route`, or explicit `--all`.
 
 ## First-time GitHub setup
 
-Downloading the binary is only the first step if you want GitHub Actions integration. To let the Loadward daemon serve a GitHub repository, you must also:
+Downloading the binary is only the first step if you want GitHub Actions integration. To let the Loadward daemon serve GitHub repositories:
 
 1. create a GitHub App;
 2. install that app on the repositories Loadward should serve;
 3. store the app private key on the daemon host;
-4. configure the GitHub installation, providers/profiles, and GitHub routes;
+4. configure execution pools, authorization policy when needed, and GitHub routes;
 5. run the daemon;
-6. use a Loadward route as the workflow's single `runs-on` label.
+6. use a configured Loadward route as the workflow's single `runs-on` label.
 
 Follow **[SETUP.md](SETUP.md)** for the complete start-to-finish procedure.
 
-A minimal ready-to-edit daemon configuration is in [`examples/config.toml`](examples/config.toml), and a repository smoke workflow is in [`examples/loadward-smoke.yml`](examples/loadward-smoke.yml).
+A minimal current configuration is in [`examples/config.toml`](examples/config.toml), and a repository smoke workflow is in [`examples/loadward-smoke.yml`](examples/loadward-smoke.yml).
 
 ## ChatGPT integration
 
-For binary-only deployments, Loadward can also accept constrained ChatGPT execution requests through its GitHub issue ingress without exposing the daemon to the internet. Source-built deployments additionally expose the `loadward-mcp` adapter; the private source repository documents that MCP path separately.
+For binary-only deployments, Loadward can accept constrained ChatGPT execution requests through GitHub issue ingress without exposing the daemon to the internet.
 
-ChatGPT uses its own connected GitHub account to create a constrained execution issue in a control repository. The Loadward daemon consumes that issue through its separate GitHub App connection and dispatches the canonical execution workflow.
+ChatGPT uses its connected GitHub account to create a constrained execution issue in a control repository. The Loadward daemon consumes that issue through its separate GitHub App connection and dispatches the canonical execution workflow. The requested route is resolved through the same authorization, placement, admission, pool, and backend machinery as any other GitHub workload.
 
-Follow **[CHATGPT.md](CHATGPT.md)** for the complete setup, including:
-
-- connecting GitHub to ChatGPT;
-- using the installed `loadward` repository as the control repository;
-- installing [`examples/exec.yml`](examples/exec.yml) in the control repository;
-- the exact issue protocol ChatGPT must use;
-- route and security boundaries;
-- an end-to-end ChatGPT smoke test.
+Follow **[CHATGPT.md](CHATGPT.md)** for the complete setup.
 
 No ChatGPT token, OpenAI API key, inbound daemon port, or Loadward private key is required for this bridge.
 
