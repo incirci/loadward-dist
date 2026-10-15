@@ -28,10 +28,12 @@ curl -fL \
 
 grep ' loadward-linux-amd64$' SHA256SUMS | sha256sum -c -
 chmod +x loadward-linux-amd64
-install -Dm755 loadward-linux-amd64 ~/.local/bin/loadward
+# Artifact is verified; do not overwrite an active daemon binary here.
 ```
 
 For ARM64, replace `amd64` with `arm64`.
+
+For a **first-time installation with no running Loadward daemon**, the verified binary can be installed with `install -Dm755 loadward-linux-amd64 ~/.local/bin/loadward`. For an **upgrade**, use the operator-managed durable maintenance, exact provenance checks and explicit out-of-band activation described in [CLI.md](CLI.md#operator-owned-upgrades). Never interpret `releases/latest` as automatic deployment approval.
 
 If GitHub CLI is already installed:
 
@@ -89,8 +91,8 @@ Useful read-only commands:
 
 ```bash
 # fleet-wide status
+loadward version --json
 loadward status
-loadward status --summary
 
 # doctor deliberately requires explicit scope
 loadward doctor --target my-project

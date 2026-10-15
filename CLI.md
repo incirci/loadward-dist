@@ -54,7 +54,7 @@ Requirements:
 
 Preference:
 
-- `--prefer-location local|cloud`
+- `--prefer-location local|remote|cloud`
 
 Host execution must be requested explicitly with both `--isolation host --workspace host`.
 
@@ -88,6 +88,19 @@ loadward explain --desktop-session --json
 
 Human output shows normalized requirements, the current would-select candidate, ranked compatible pools with admission pressure, and rejected pools with reasons. The result is a snapshot, not a reservation.
 
+## Explicit-release allocations
+
+Explicit-release allocations own workload-independent durable capacity until they are released or authoritatively lost. The current supported workload-independent resource is a local libvirt desktop VM.
+
+```bash
+loadward allocation create --isolation vm --desktop-session
+loadward allocation list
+loadward allocation show <allocation-id>
+loadward allocation release <allocation-id>
+```
+
+Each allocation subcommand supports `--json`. These are ordinary owned allocations; no separate scheduler or capacity ledger is created.
+
 ## Fleet status and diagnosis
 
 ### `status`
@@ -95,8 +108,8 @@ Human output shows normalized requirements, the current would-select candidate, 
 `status` is fast and read-only. Bare status is **fleet-wide**.
 
 ```text
+loadward status
 loadward status [--target TARGET] [--route ROUTE]
-loadward status --summary
 loadward status --all
 ```
 
@@ -107,13 +120,12 @@ loadward status
 loadward status --target my-project
 loadward status --route host
 loadward status --target my-project --route desktop
-loadward status --summary
-loadward status --summary --json
+loadward status --json
 loadward status --all
 ```
 
 - `--target` and/or `--route` focus full status.
-- `--summary` is a compact fleet-wide summary and cannot be combined with selectors or `--all`.
+- Bare `status` is the compact fleet-wide summary with controller-known route/listener health; it does not perform new provider checks.
 - `--all` is the explicit full-fleet form and cannot be combined with selectors.
 
 ### `doctor`
@@ -226,6 +238,14 @@ loadward maintenance exit
 - a daemon starting while the marker exists comes up drained and does not start GitHub listeners.
 - `exit` explicitly activates the current daemon revision and clears the durable marker only after successful resume.
 
+## Operator-owned upgrades
+
+There is deliberately **no `loadward update`** or automatic deployment command. `version --json` reports the built binary's exact commit, but only separate provenance checks can establish the running daemon's revision.
+
+An operator must approve an exact validated source commit or release, verify current capacity and maintenance state, and perform any service replacement **out of band**, never by asking Loadward to deploy itself. Source-checkout deployments use the repository-owned `scripts/install-local prepare` followed by independent provenance checks and a separate `scripts/install-local activate`. `prepare` proves drained/idle ownership and restarts the replacement **still in durable maintenance**; no update runs merely because remote `main` moved.
+
+Do not install a downloaded release directly over an active daemon binary. Missing approval, busy/uncertain ownership, failed verification or interrupted activation is not permission to resume or declare success. The source [operations runbook](https://github.com/incirci/loadward/blob/main/docs/operations.md#durable-maintenance-and-upgrades) contains the precise local workflow (private source access is required).
+
 ## Authorization
 
 Permanent authorization policy is configured by trusted principal kind in TOML. Temporary grants are exact principal-kind + principal-id + gate tuples held in daemon memory and expire automatically.
@@ -239,6 +259,7 @@ loadward authorization revoke --kind KIND --id ID --gate GATE
 Gates are:
 
 - `host`
+- `remote`
 - `workspace-read`
 - `workspace-write`
 - `cloud`
@@ -275,7 +296,7 @@ Normal recovery is automatic. These operator commands are for states where Loadw
 
 ```text
 loadward recovery status [--json]
-loadward recovery resolve --execution EXECUTION_ID
+loadward recovery resolve --member MEMBER_ID
 loadward recovery confirm --pool POOL
 ```
 
@@ -283,7 +304,7 @@ loadward recovery confirm --pool POOL
 
 `resolve` and `confirm` are trusted operator mutations and are accepted only while Loadward is drained:
 
-- `resolve` terminalizes one preparing Execution with no persisted backend identity only after authoritative external verification proves no resource was created.
+- `resolve` terminalizes one preparing allocation member with no persisted backend identity only after authoritative external verification proves no physical resource was created.
 - `confirm` reopens one incomplete-recovery pool only after external reality is verified; Loadward still checks every remaining durable backend identity before opening it.
 
 Do not use these commands to bypass uncertain ownership.
